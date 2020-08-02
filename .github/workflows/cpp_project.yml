@@ -1,0 +1,24 @@
+name: CPP project with CTest CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with: 
+        submodules: recursive
+    - name: Prepare build dir
+      run: mkdir build
+    - name: Generate build files using cmake
+      run: cmake ..
+      working-directory: ./build
+    - name: Run make
+      run: make -j4
+      working-directory: ./build
+    - name: Run tests
+      run: ctest
+      working-directory: ./build/test
