@@ -6,7 +6,10 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    
+    env:
+      CC: clang
+      CXX: clang++
     steps:
     - uses: actions/checkout@v1
       with: 
