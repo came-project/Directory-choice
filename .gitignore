@@ -1,1 +1,5 @@
 .*.swp
+.idea
+cmake-build-debug
+.clang-format
+.gitignore
