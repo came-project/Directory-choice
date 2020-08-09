@@ -87,7 +87,7 @@ void DirChoiceDialog::on_ok(wxCommandEvent & evt)
         std::filesystem::directory_iterator dir_iter(m_searcher[m_searcher.names()[selected]].entry);
         for (const auto & sub_element : dir_iter) {
             if (sub_element.is_regular_file() && sub_element.path().extension() == m_searcher.get_extension()) {
-                std::cout << sub_element.path() << '\n';
+                std::cout << sub_element.path().string() << '\n';
             }
         }
         this->Destroy();

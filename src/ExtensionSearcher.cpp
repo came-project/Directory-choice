@@ -44,7 +44,6 @@ ExtensionSearcherRef ExtensionSearcherRef::search_in_dir(const fs::path & path, 
     ExtensionSearcherRef searcher(path.string().length(), std::move(extension));
 
     fs::directory_iterator dir_iter(path);
-    std::cout << '\n';
     std::for_each(fs::begin(dir_iter), fs::end(dir_iter), [&searcher](const fs::directory_entry & dir) { searcher.recursive_search(dir); });
     return searcher;
 }
@@ -67,7 +66,7 @@ void ExtensionSearcherRef::recursive_search(const fs::directory_entry & dir, uns
     std::string formatted_path = m_es_ptr->format_path(dir.path().string());
     for (const auto & sub_element : dir_iter) {
         if (sub_element.is_regular_file()) {
-            if (sub_element.path().extension() == m_es_ptr->extension) {
+            if (sub_element.path().extension() == get_extension()) {
                 if (const auto & [it, emplaced] = m_es_ptr->path_of.try_emplace(formatted_path, dir, 1); emplaced) {
                     m_es_ptr->names.emplace_back(it->first);
                 } else {
@@ -77,10 +76,7 @@ void ExtensionSearcherRef::recursive_search(const fs::directory_entry & dir, uns
         }
         else if (sub_element.is_directory() && !sub_element.is_symlink() && sub_element.exists() &&
                  ((sub_element.status().permissions() & fs::perms::others_read) != fs::perms::none)) {
-            fs::directory_iterator sub_dirs(sub_element);
-            for (const auto & sub_dir : sub_dirs) {
-                recursive_search(sub_dir, depth + 1);
-            }
+            recursive_search(sub_element, depth + 1);
         }
     }
 }
@@ -115,7 +111,6 @@ const ExtensionSearcher::CountedEntry & ExtensionSearcherRef::operator[](const s
 {
     auto iter = m_es_ptr->path_of.find(formatted);
     if (iter == m_es_ptr->path_of.end()) {
-        std::cout << formatted << " is not contained\n";
         return ExtensionSearcher::CountedEntry{fs::directory_entry(), 0};
     }
     return iter->second;
