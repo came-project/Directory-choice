@@ -2,14 +2,6 @@
 
 #include <utility>
 
-ExtensionSearcher::ExtensionSearcher(std::size_t dir_name_len, std::string ext)
-    : path_of()
-    , names()
-    , extension(std::move(ext))
-    , dir_name_start(dir_name_len + 1) // we want it to be after the subsequent slash
-{
-}
-
 std::string ExtensionSearcher::format_path(const std::string & path)
 {
     std::string res(path.substr(dir_name_start));
@@ -39,23 +31,12 @@ std::size_t ExtensionSearcher::size()
 
 // ExtensionSearcherRef
 
-ExtensionSearcherRef ExtensionSearcherRef::search_in_dir(const fs::path & path, std::string extension)
-{
-    ExtensionSearcherRef searcher(path.string().length(), std::move(extension));
-
-    fs::directory_iterator dir_iter(path);
-    std::for_each(fs::begin(dir_iter), fs::end(dir_iter), [&searcher](const fs::directory_entry & dir) { searcher.recursive_search(dir); });
-    return searcher;
-}
-
-ExtensionSearcherRef::ExtensionSearcherRef(std::size_t dir_name_len, std::string ext)
-    : m_es_ptr(new ExtensionSearcher(dir_name_len, std::move(ext)))
-{
-}
-
 void ExtensionSearcherRef::recursive_search(const fs::directory_entry & dir, unsigned int depth)
 {
-    if (!dir.is_directory() || !dir.exists()) {
+    if (dir.is_symlink()) {
+        return;
+    }
+    if (!dir.exists() || !dir.is_directory()) {
         return;
     }
     if (((dir.status().permissions() & fs::perms::others_read) == fs::perms::none)) {
@@ -65,8 +46,11 @@ void ExtensionSearcherRef::recursive_search(const fs::directory_entry & dir, uns
     fs::directory_iterator dir_iter(dir);
     std::string formatted_path = m_es_ptr->format_path(dir.path().string());
     for (const auto & sub_element : dir_iter) {
+        if (sub_element.is_symlink()) {
+            continue;
+        }
         if (sub_element.is_regular_file()) {
-            if (sub_element.path().extension() == get_extension()) {
+            if (has_extension(sub_element.path().extension())) {
                 if (const auto & [it, emplaced] = m_es_ptr->path_of.try_emplace(formatted_path, dir, 1); emplaced) {
                     m_es_ptr->names.emplace_back(it->first);
                 } else {
@@ -74,7 +58,7 @@ void ExtensionSearcherRef::recursive_search(const fs::directory_entry & dir, uns
                 }
             }
         }
-        else if (sub_element.is_directory() && !sub_element.is_symlink() && sub_element.exists() &&
+        else if (sub_element.is_directory() && sub_element.exists() &&
                  ((sub_element.status().permissions() & fs::perms::others_read) != fs::perms::none)) {
             recursive_search(sub_element, depth + 1);
         }
@@ -116,11 +100,16 @@ const ExtensionSearcher::CountedEntry & ExtensionSearcherRef::operator[](const s
     return iter->second;
 }
 
-const std::vector<std::string> & ExtensionSearcherRef::names()
+
+const ExtensionSearcher::CountedEntry & ExtensionSearcherRef::operator[](std::size_t idx) const
+{
+    if (idx < m_es_ptr->size()) {
+        return (*this)[names()[idx]];
+    }
+    return ExtensionSearcher::CountedEntry{fs::directory_entry(), 0};
+}
+
+const std::vector<std::string> & ExtensionSearcherRef::names() const
 {
     return m_es_ptr->names;
-}
-const std::string & ExtensionSearcherRef::get_extension()
-{
-    return m_es_ptr->extension;
 }

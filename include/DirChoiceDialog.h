@@ -17,6 +17,8 @@ private:
 
     void update_experiments_list(wxFileDirPickerEvent & evt);
 
+    void on_size_update(wxSizeEvent & evt);
+
 private:
     wxDataViewListCtrl * m_experiments_list;
     wxBoxSizer * m_main_sizer;
